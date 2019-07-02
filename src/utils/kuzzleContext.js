@@ -10,19 +10,21 @@ function useRealTime() {
 }
 
 const RealTimeProvider = ( {client, children} ) => {
-  //const [connected, setConnected] = useState(false)
+  const [connected, setConnected] = useState({connected:client.connected})
   useEffect( () => {
-    let connect = async () => {
-      await client.connect()
-      //setConnected(true);
-    };
-    connect();
-
-    return () => {
-      //setConnected(false);
-      client.disconnect();
+    if (!connected) {
+      let connect = async () => {
+        await client.connect()      
+        setConnected(true);
+        console.log("---",client);
+      };
+      connect();
+      return () => {
+        setConnected(false);
+        client.disconnect();
+      }
     }
-  })
+  }, [])
   return ( 
     <RealTimeContext.Provider value={client}>
       {children}
