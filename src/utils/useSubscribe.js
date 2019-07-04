@@ -2,34 +2,40 @@ import { useState, useEffect, useRef } from "react"
 import { useRealTime } from "../utils/kuzzleContext"
 
 function useSubscribe(provider, path, id) {
-  const [response, setResponse] = useState({ data: null, loading: true });
-  const client = useRealTime()
-  const roomId = useRef();
-  
+  const [response, setResponse] = useState({ data: null, loading: true, error: undefined });
+  const rtp = useRealTime()
+  const roomId = useRef(null);
   useEffect( () => {
-    const subscribe = async () => {      
-      try {
-        const filter = { equal: {_id : id } };
-        roomId = await client.realtime.subscribe(provider, path, filter, (n) => {
-          console.log(n);
+    // subscribe only if we have a client
+    if (rtp.connected) {    
+      const subscribe = async () => {      
+        console.log("subscribe");
+        try {
+          const filter = { equal: {_id : id } };
+          roomId.current = await rtp.client.realtime.subscribe(provider, path, filter, (n) => {
+            setResponse({
+              data: n.result._source,
+              loading: false,
+              error: undefined
+            });
+          })
+          
+        } catch (e) {
+          console.log(e);
           setResponse({
-            data: n.result._source,
-            error: undefined,
-            loading: false,
+            data: null, 
+            loading: false, 
+            error: e
           });
-        })
+        }
+      }
+      subscribe();
+      return () => {
         console.log(roomId);
-      } catch (e) {
-        console.log(e);
+        rtp.client.realtime.unsubscribe(roomId.current)
       }
     }
-    subscribe();
-    return () => {
-      console.log(roomId);
-      client.realtime.unsubscribe(roomId.current)
-    }
-  }, [])
-  console.log(">>>", response);
+  }, [rtp])
   return response;
 }
 
